@@ -1,5 +1,4 @@
 import os
-import shutil
 import subprocess
 
 import argcomplete
@@ -21,6 +20,10 @@ REPOSITORIES = {
         },
         "name": "gen-fastapi-norm"
     }
+}
+COMMANDS = {
+    "checkPrisma": "npm -g list --depth=0 prisma",
+    "clone": "git clone --bare",
 }
 
 
@@ -46,11 +49,8 @@ class Gen(object):
         fastapi web Project Scaffolding
 
         :param name:You project Name
-        :type name: str
         :param t: Project type: Options[normal, normal-orm, easy]
-        :type t: str
-        :param orm: With PrismaORM management database
-        :type orm: bool, default False
+        :param orm:Bool, default False, With PrismaORM management database
 
         :Example:
 
@@ -72,6 +72,17 @@ class Gen(object):
            ```
         """
 
+        if orm:
+            output = subprocess.check_output(
+                COMMANDS["checkPrisma"],
+                shell=True,
+                stderr=subprocess.STDOUT,
+                universal_newlines=True
+            )
+            if "prisma" not in output:
+                print("\033[93mWARNING:\033[0m Prisma package is not installed, enter `npm install -g prisma`.")
+                return
+
         url = REPOSITORIES["fastapi"]["repository"][t]
 
         try:
@@ -79,18 +90,14 @@ class Gen(object):
             if result.returncode != 0:
                 print(f"\033[91mERROR:\033[0m Failed to clone project.")
 
-            # Get the cloned project directory name
             pwd = os.getcwd()
             directory_name = url.split('/')[-1].split('.')[0]
             project_dir = os.path.join(pwd, directory_name)
             git_dir = os.path.join(project_dir, '.git')
 
             if os.path.exists(git_dir):
-                try:
-                    shutil.rmtree(git_dir)
-                except:
-                    pass
                 os.rename(project_dir, os.path.join(pwd, name))
+
         except subprocess.CalledProcessError as e:
             print(f"\033[91mERROR:\033[0m Failed to clone project: {e}")
 
