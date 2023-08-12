@@ -1,33 +1,14 @@
+import contextlib
+import json
 import os
+import shutil
 import subprocess
 
 import argcomplete
 import fire
 
-MANAGERS = ["node", "git"]
-REPOSITORIES = {
-    "fastapi": {
-        "repository": {
-            "normal": "git@github.com:NC-Cj/gen-fastapi-norm.git",
-            "easy": ""
-        },
-        "name": "gen-fastapi-norm"
-    },
-    "gin": {
-        "repository": {
-            "normal": "git@github.com:NC-Cj/gen-fastapi-norm.git",
-            "easy": ""
-        },
-        "name": "gen-fastapi-norm"
-    }
-}
-COMMANDS = {
-    "checkPrisma": "npm -g list --depth=0 prisma",
-    "clone": "git clone --bare",
-}
 
-
-def check_command_exists(command):
+def _check_command_exists(command):
     try:
         subprocess.check_output([command, '--version'])
         return True
@@ -37,14 +18,41 @@ def check_command_exists(command):
         print(f"\033[91mERROR:\033[0m Your system needs to have {command}")
 
 
+def _clone(url):
+    result = subprocess.run(['git', 'clone', url], capture_output=True, text=True)
+    if result.returncode != 0:
+        print("\033[91mERROR:\033[0m Failed to clone project.")
+
+    pwd = os.getcwd()
+    directory_name = url.split('/')[-1].split('.')[0]
+    project_dir = os.path.join(pwd, directory_name)
+    git_dir = os.path.join(project_dir, '.git')
+
+    return pwd, project_dir, git_dir
+
+
+def _delete_git_directory(git_dir):
+    if os.path.exists(git_dir):
+        with contextlib.suppress(Exception):
+            shutil.rmtree(git_dir)
+
+
+def _rename(project_dir, pwd, name):
+    # os.rename(project_dir, os.path.join(pwd, name))
+    # os.rename("./gen-fastapi-norm", f"./{name}")
+    shutil.move(project_dir, os.path.join(pwd, name))
+
+
 class Gen(object):
 
     def __init__(self):
-        for value in MANAGERS:
-            check_command_exists(value)
+        with open("config.json", 'r') as file:
+            self.config = json.load(file)
 
-    @staticmethod
-    def fastapi(name: str, t: str, orm: bool = False):
+        for value in self.config["managers"]:
+            _check_command_exists(value)
+
+    def fastapi(self, name: str, t: str, orm: bool = False):
         """
         fastapi web Project Scaffolding
 
@@ -74,7 +82,7 @@ class Gen(object):
 
         if orm:
             output = subprocess.check_output(
-                COMMANDS["checkPrisma"],
+                self.config["commands"]["checkPrisma"],
                 shell=True,
                 stderr=subprocess.STDOUT,
                 universal_newlines=True
@@ -83,26 +91,15 @@ class Gen(object):
                 print("\033[93mWARNING:\033[0m Prisma package is not installed, enter `npm install -g prisma`.")
                 return
 
-        url = REPOSITORIES["fastapi"]["repository"][t]
+        url = self.config["repositories"]["fastapi"]["repository"][t]
+        pwd, project_dir, git_dir = _clone(url)
 
-        try:
-            result = subprocess.run(['git', 'clone', url], capture_output=True, text=True)
-            if result.returncode != 0:
-                print(f"\033[91mERROR:\033[0m Failed to clone project.")
+        _delete_git_directory(git_dir)
+        _rename(project_dir, pwd, name)
 
-            pwd = os.getcwd()
-            directory_name = url.split('/')[-1].split('.')[0]
-            project_dir = os.path.join(pwd, directory_name)
-            git_dir = os.path.join(project_dir, '.git')
+        # print(f"\033[91mERROR:\033[0m Failed to clone project: {e}")
 
-            if os.path.exists(git_dir):
-                os.rename(project_dir, os.path.join(pwd, name))
-
-        except subprocess.CalledProcessError as e:
-            print(f"\033[91mERROR:\033[0m Failed to clone project: {e}")
-
-    @staticmethod
-    def gin(t: str):
+    def gin(self, t: str):
         """
         fastapi web Project Scaffolding
         :param t:  Project type: Options[normal, normal-orm, easy]

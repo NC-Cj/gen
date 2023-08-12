@@ -1,0 +1,26 @@
+{
+  "managers": [
+    "node",
+    "git"
+  ],
+  "repositories": {
+    "fastapi": {
+      "repository": {
+        "normal": "git@github.com:NC-Cj/gen-fastapi-norm.git",
+        "easy": ""
+      },
+      "name": "gen-fastapi-norm"
+    },
+    "gin": {
+      "repository": {
+        "normal": "git@github.com:NC-Cj/gen-fastapi-norm.git",
+        "easy": ""
+      },
+      "name": "gen-fastapi-norm"
+    }
+  },
+  "commands": {
+    "checkPrisma": "npm -g list --depth=0 prisma",
+    "clone": "git clone --bare"
+  }
+}
